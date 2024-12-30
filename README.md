@@ -8,10 +8,10 @@ This is not a ready-to-use library like those made for Arduino! The idea here is
 All options are prepared for the Atmega328P microcontroller that is usually installed in Arduino (F_CPU is usually lower than 16 MHz - 8 MHz typically). In some cases, you need to adjust the registers accordingly if you use another type of AVR unit.
 
 ## Resources
-- [ADC converter in AVR controller](./avr_adc/README.md)
-- [Dallas 18B20 Temperature Sensor Interface](./avr_dallas_18B20/README.md)
-- [IR Gree air conditioner communication](./avr_gree_ir/README.md)
-- [Rotary encoder with push button (debounced)](./avr_rotary_encoder/README.md)
+- [ADC converter in AVR controller](./adc/README.md)
+- [Dallas 18B20 Temperature Sensor Interface](./dallas_18B20/README.md)
+- [IR Gree air conditioner communication](./gree_ir/README.md)
+- [Rotary encoder with push button (debounced)](./rotary_encoder/README.md)
 
 ### Usage
 This is not a "ready to use" library. To use this code, you need to copy some parts and manually adjust some parameters like PORT/DDR/PIN names and pin numbers.
