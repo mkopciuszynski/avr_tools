@@ -42,8 +42,9 @@ int main(void) {
             WDTCR |= _BV(WDTIE); // Enable WDT interrupt
 
             // Configure Timer0 for 20 Hz trigger frequency
-            // Adjust OCR0A value if the clock is too fast or slow
-            OCR0A = 248; 
+            // Adjust OCR0A value for accuracy
+            // if the clock is too slow this value should be increased
+            OCR0A = 251; //
             
             // Set Timer0 to CTC (Clear Timer on Compare Match) mode
             TCCR0A |= _BV(WGM01);  // Enable CTC mode
@@ -71,7 +72,7 @@ int main(void) {
                 // Wakeup from sleep
                 asm("wdr");                  // Reset the WDT
                 OUT_ON;                      // Blink the output
-                _delay_ms(20);               // Fine-tune the blink duration
+                _delay_ms(10);               // Fine-tune the blink duration
                 OUT_OFF;                     // Turn off the output
             }
         }
