@@ -3,15 +3,15 @@
 #include <util/delay.h>
 
 // Pin definitions
-#define OUT_PN         PB4                // Output pin for blinking
+#define OUT_PN         PB4                    // Output pin for blinking
 #define OUT_ON         PORTB |=  _BV(OUT_PN)  // Macro to turn the output ON
 #define OUT_OFF        PORTB &= ~_BV(OUT_PN)  // Macro to turn the output OFF
 #define SEC_IN_SLEEP   900                // Sleep duration in seconds (15 minutes)
 
 // Global variables
-volatile uint16_t wdt8_tc, ticks_for_quarter; // WDT tick counter and calculated ticks for a quarter
-volatile uint8_t wdt_lock_flag;              // Flag to lock WDT operation
-uint8_t i, q;                                // Loop counters
+volatile uint16_t wdt_tc, ticks_in_sleep, i;   // WDT tick counter and calculated ticks for SEC_IN_SLEEP
+volatile uint8_t wdt_lock_flag;                 // Flag to lock WDT operation
+uint8_t h;                                      // Loop counters
 
 int main(void) {
 
@@ -34,8 +34,8 @@ int main(void) {
     // Main loop
     while (1) {
 
-        // Repeat 24*4 times to achieve a 24-hour cycle (15 minutes per iteration)
-        for (q = 0; q < 24*4; ++q) {
+        // Repeat 24*4 times to achieve a 24-hour cycle (30 minutes per iteration)
+        for (h = 0; h < 24*2; ++h) {
 
             // Calibrate the WDT timer
             asm("wdr"); // Reset the WDT
@@ -53,19 +53,20 @@ int main(void) {
             TCNT0 = 0;             // Reset Timer0 counter
             
             // Reset the WDT tick counter
-            wdt8_tc = 0;
+            wdt_tc = 0;
             asm("wdr"); // Reset the WDT
             wdt_lock_flag = 1; // Lock to wait for WDT interrupt
             while (wdt_lock_flag); // Wait until WDT interrupt unlocks
 
             TCCR0B = 0; // Stop Timer0
 
-            // Calculate the number of ticks for a 15-minute quarter
+            // Calculate the number of ticks for a deep sleep
             // Formula: (sleep duration in seconds * frequency) / WDT ticks - 1
-            ticks_for_quarter = ((SEC_IN_SLEEP * 20) / wdt8_tc) - 1;
+            ticks_in_sleep = ((SEC_IN_SLEEP * 20) / wdt_tc) - 1;
+            // for 15 we get: ~225 ticks (for 4 sec wdt duration)
 
             // Perform the sleep-wake cycle for the calculated number of ticks
-            for (i = 0; i < ticks_for_quarter; ++i) {
+            for (i = 0; i < ticks_in_sleep; ++i) {
                 MCUCR = _BV(SM1) | _BV(SE);  // Set MCU to Power-down mode and enable sleep
                 WDTCR |= _BV(WDTIE);         // Enable WDT interrupt
                 asm("sleep");                // Enter sleep mode
@@ -90,6 +91,6 @@ ISR(WDT_vect) {
 // Timer0 Compare Match A interrupt service routine
 // Used to generate a square wave with a frequency of 10 Hz (toggle frequency)
 ISR(TIM0_COMPA_vect) {
-    ++wdt8_tc;          // Increment the WDT tick counter
+    ++wdt_tc;          // Increment the WDT tick counter
     PORTB ^= _BV(OUT_PN); // Toggle the output pin
 }
