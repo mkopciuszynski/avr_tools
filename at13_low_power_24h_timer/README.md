@@ -1,6 +1,6 @@
 # Low Power 24-Hour Timer on ATtiny13
 
-This project demonstrates how to implement a super power-efficient timer on the ATtiny13 microcontroller. The timer can execute a task every 24 hours or at intervals that are multiples of 15 minutes. It achieves this by leveraging the internal Watchdog Timer (WDT) oscillator for time tracking and deep sleep for power efficiency.
+This project demonstrates how to implement a power-efficient timer on the ATtiny13 microcontroller. The timer can execute a task every 24 hours or at intervals that are multiples of 15 minutes. It achieves this by leveraging the internal Watchdog Timer (WDT) oscillator for time tracking and deep sleep for power efficiency.
 
 ## Features
 
@@ -10,31 +10,29 @@ This project demonstrates how to implement a super power-efficient timer on the 
 
 ## How It Works
 
-1. **WDT Oscillator**: The internal WDT oscillator is used to track time. It operates independently of the main system clock, consuming minimal power.
-2. **Deep Sleep**: The microcontroller enters deep sleep mode between tasks, further reducing power consumption.
-3. **Calibration**: Every 15 minutes, a timer is used to measure and calibrate the WDT tick count. This ensures accurate timekeeping despite the WDT oscillator's temperature dependency.
+1. **Timer0 setup**: Timer0 is used to trigger 10 ms ticks.
+2. **WDT Calibration**: At the beggining of every 15 minutes period, timmer ticks are used to measure the real WDT timer time that is usually between 8-9 seconds (for 8 second mode). Then we calculate for how long do we need to continue the break to get perfect 10 second period.
+3. **Deep Sleep**: 24 hours period is composed of `24*4` naps. To get 15 minutes period the microcontroller repeats `90-1` times the 10 seconds breaks that are composed of three phases:
+- a deep sleep (only WDT wordks in interrupt mode),
+- a timmer break (to have full 10 s break),
+- tasks (for example blinking every 10 s, or tasks for particular loop count - i.e. every 24 h).
 
 ## Usage
 
-1. Compile the code using the provided Makefile.
-2. Flash the compiled firmware to an ATtiny13 microcontroller.
-3. Connect an output device to the appropriate pin (PB4 in the example).
-4. The microcontroller will toggle the output at the specified intervals.
-
-## Fine Tuning
-
-For fine tuning, change the `OCR0A = 248;` value or increase/decrease the `_delay_ms` inside the quarter loop.
-
-## Notes
-
-- The WDT oscillator's accuracy depends on temperature, so calibration is essential for precise timing.
-- This implementation is ideal for applications requiring ultra-low power consumption and periodic task execution.
+1. Connect an LED to the appropriate pin (PB4 in the example).
+2. Set `FINE_DEL_TIME` to 0.
+3. Flash the compiled firmware to an ATtiny13 microcontroller.
+3. Measure the time of each 15 minutes cycle.
+4. Adjust `OCRA0A` value to have slightly less than 15 minutes.
+5. Adjust the `FINE_DEL_TIME` to have perfect 15 minutes (usually this value is about 25000 us)
+6. Setup the task:
+- use `h` to select the 15 minutes period (for example `h==0 && h==4`)
+- use `i` to track 10 second periods (if i < 6 means 1 minute).
 
 ## Files
 
 - `main.c`: The main implementation of the 24-hour timer with WDT calibration.
 - `main_1s_blink.c`: A simple example to blink an LED every second.
-- `main_10Hz_timer.c`: Code used to calibrate the timer to get exactly a 10 Hz signal.et exactly a 10 Hz signal.
 - `Makefile`: Build and flash instructions for the ATtiny13.
 
 

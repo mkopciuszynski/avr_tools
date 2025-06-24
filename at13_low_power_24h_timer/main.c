@@ -3,78 +3,123 @@
 #include <util/delay.h>
 
 // Pin definitions
-#define OUT_PN         PB4                    // Output pin for blinking
-#define OUT_ON         PORTB |=  _BV(OUT_PN)  // Macro to turn the output ON
-#define OUT_OFF        PORTB &= ~_BV(OUT_PN)  // Macro to turn the output OFF
-#define SEC_IN_SLEEP   900                // Sleep duration in seconds (15 minutes)
+#define OUT_PN PB4                    // Output pin (for blinking)
+#define OUT_ON PORTB |= _BV(OUT_PN)   // Macro to turn the output ON
+#define OUT_OFF PORTB &= ~_BV(OUT_PN) // Macro to turn the output OFF
+
+#define FINE_DEL_TIME 26900 // Fine time tunning
 
 // Global variables
-volatile uint16_t wdt_tc, ticks_in_sleep, i;   // WDT tick counter and calculated ticks for SEC_IN_SLEEP
-volatile uint8_t wdt_lock_flag;                 // Flag to lock WDT operation
-uint8_t h;                                      // Loop counters
+volatile uint16_t timer_tick, ticks_in_sleep; // WDT tick counter and calculated ticks for SEC_IN_SLEEP
+volatile uint8_t wdt_lock_flag;               // Flag to lock WDT operation
+uint8_t h, i;                                 // Loop counters
 
-int main(void) {
+int main(void)
+{
 
-    cli(); // Disable global interrupts during setup
-
-    // Configure and enable the 8-second Watchdog Timer (WDT)
-    WDTCR = _BV(WDCE) | _BV(WDE);           // Enable WDT configuration mode
+    cli();                                    // Disable global interrupts
+    WDTCR = _BV(WDCE) | _BV(WDE);             // Enable WDT configuration mode
     WDTCR = _BV(WDE) | _BV(WDP0) | _BV(WDP3); // Set WDT timeout to 8 seconds
-    sei(); // Enable global interrupts
-    asm("wdr"); // Reset the WDT
+    sei();                                    // Enable global interrupts
+    asm("wdr");                               // Reset the WDT
 
     // Configure OUT_PN as an output pin
     DDRB = _BV(OUT_PN);
-    
-    // Turn ON the output for 3 seconds at startup for initialization indication
-    OUT_ON;
-    _delay_ms(3000);
-    OUT_OFF;
+
+    // Inint blink
+    for (h = 0; h < 5; ++h)
+    {
+        OUT_ON;
+        _delay_ms(200);
+        OUT_OFF;
+        _delay_ms(200);
+        asm("wdr");
+    }
 
     // Main loop
-    while (1) {
+    while (1)
+    {
 
-        // Repeat 24*4 times to achieve a 24-hour cycle (30 minutes per iteration)
-        for (h = 0; h < 24*2; ++h) {
+        // Repeat 24*4 times to achieve a 24-hour cycle
+        for (h = 0; h < (24 * 2); ++h)
+        {
 
-            // Calibrate the WDT timer
-            asm("wdr"); // Reset the WDT
+            asm("wdr");          // Reset the WDT
             WDTCR |= _BV(WDTIE); // Enable WDT interrupt
 
-            // Configure Timer0 for 20 Hz trigger frequency
-            // Adjust OCR0A value for accuracy
-            // if the clock is too slow this value should be increased
-            OCR0A = 251; //
-            
-            // Set Timer0 to CTC (Clear Timer on Compare Match) mode
-            TCCR0A |= _BV(WGM01);  // Enable CTC mode
-            TCCR0B |= _BV(CS02);   // Set prescaler to 256
-            TIMSK0 |= _BV(OCIE0A); // Enable Timer0 Compare Match A interrupt
-            TCNT0 = 0;             // Reset Timer0 counter
-            
-            // Reset the WDT tick counter
-            wdt_tc = 0;
-            asm("wdr"); // Reset the WDT
-            wdt_lock_flag = 1; // Lock to wait for WDT interrupt
-            while (wdt_lock_flag); // Wait until WDT interrupt unlocks
+            // Configure Timer0, CTC, 10 ms period
+            OCR0A = 195; // Adjust OCR0A value for accuracy
 
+            // Set Timer0 to CTC (Clear Timer on Compare Match) mode
+            TCCR0A |= _BV(WGM01);           // Enable CTC mode
+            TCCR0B = _BV(CS00) | _BV(CS01); // preskaler 64
+            TIMSK0 |= _BV(OCIE0A);          // Enable Timer0 Compare Match A interrupt
+            TCNT0 = 0;                      // Reset Timer0 counter
+
+            OUT_ON;
+
+            // First, measure accurate the WDT time
+            // Reset the WDT tick counter (1 tick per 10 ms)
+            timer_tick = 0;
+            asm("wdr"); // Reset the WDT
+            wdt_lock_flag = 1;
+            // Lock to wait for WDT interrupt
+            while (wdt_lock_flag)
+                ;
+
+            // WDT takes approximately 8-9 seconds
+            // Calculate to get 10 seconds (1000 ticks * 10 ms)
+            delay_sleep = 1000 - timer_tick;
+
+            OUT_OFF;
+
+            // Wait for full 10 sedonds
+            timer_tick = 0;
+            TCNT0 = 0;
+            while (timer_tick < delay_sleep)
+                ;
             TCCR0B = 0; // Stop Timer0
 
-            // Calculate the number of ticks for a deep sleep
-            // Formula: (sleep duration in seconds * frequency) / WDT ticks - 1
-            ticks_in_sleep = ((SEC_IN_SLEEP * 20) / wdt_tc) - 1;
-            // for 15 we get: ~225 ticks (for 4 sec wdt duration)
+            // WDT calibration done
+            // 15 minutes loop
+            for (i = 0; i < (90 - 1); ++i)
+            {
+                // Enter the deep sleep for aprox. 8 sedonds
+                asm("wdr");
+                MCUCR = _BV(SM1) | _BV(SE); // Set MCU to Power-down mode and enable sleep
+                WDTCR |= _BV(WDTIE);        // Enable WDT interrupt
+                asm("sleep");               // Enter sleep mode
 
-            // Perform the sleep-wake cycle for the calculated number of ticks
-            for (i = 0; i < ticks_in_sleep; ++i) {
-                MCUCR = _BV(SM1) | _BV(SE);  // Set MCU to Power-down mode and enable sleep
-                WDTCR |= _BV(WDTIE);         // Enable WDT interrupt
-                asm("sleep");                // Enter sleep mode
                 // Wakeup from sleep
-                asm("wdr");                  // Reset the WDT
-                OUT_ON;                      // Blink the output
-                _delay_ms(10);               // Fine-tune the blink duration
-                OUT_OFF;                     // Turn off the output
+                asm("wdr"); // Reset the WDT
+
+                // Wait approx. 2 more seconds
+                TCCR0B = _BV(CS00) | _BV(CS01); // preskaler 64
+                timer_tick = 0;
+                TCNT0 = 0;
+                while (timer_tick < delay_sleep)
+                    ;
+
+                TCCR0B = 0; // Stop Timer0
+
+                // Use adjustable delay for better time tunning
+                _delay_us(FINE_DEL_TIME);
+
+                OUT_ON; // Blink the output
+                _delay_ms(20);
+                OUT_OFF;
+
+                ///////////////////////////////////////
+                // one minute time once per 24 h
+                if (h == 0 && i < 6)
+                {
+                    OUT_ON;
+                }
+                else
+                {
+                    OUT_OFF;
+                }
+                ///////////////////////////////////////
             }
         }
     }
@@ -83,14 +128,14 @@ int main(void) {
 }
 
 // Watchdog Timer interrupt service routine
-ISR(WDT_vect) {
-    OUT_OFF;            // Ensure the output is turned off
-    wdt_lock_flag = 0;  // Unlock the WDT lock flag
+ISR(WDT_vect)
+{
+    wdt_lock_flag = 0; // Unlock the WDT lock flag
 }
 
 // Timer0 Compare Match A interrupt service routine
-// Used to generate a square wave with a frequency of 10 Hz (toggle frequency)
-ISR(TIM0_COMPA_vect) {
-    ++wdt_tc;          // Increment the WDT tick counter
-    PORTB ^= _BV(OUT_PN); // Toggle the output pin
+ISR(TIM0_COMPA_vect)
+{
+    ++timer_tick; // Increment the WDT tick counter
+    // PORTB ^= _BV(OUT_PN); // Toggle the output pin
 }

@@ -5,7 +5,6 @@ F_CPU = 1200000
 
 ## This is where your main() routine lives 
 #MAIN = main_1s_blink.c
-#MAIN = main_10Hz_timer.c
 MAIN = main.c
 
 #########################################################
