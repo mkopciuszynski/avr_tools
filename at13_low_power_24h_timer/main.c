@@ -7,12 +7,10 @@
 #define LED_ON PORTB |= _BV(LED_PN)   // Macro to turn the output ON
 #define LED_OFF PORTB &= ~_BV(LED_PN) // Macro to turn the output OFF
 
-#define DEV_PN PB3
+
+#define DEV_PN PB3                    // Output pin for an external device
 #define DEV_ON PORTB |= _BV(DEV_PN)
 #define DEV_OFF PORTB &= ~_BV(DEV_PN)
-
-
-#define FINE_DEL_TIME 26800 // Fine time tunning
 
 // Global variables
 volatile uint16_t timer_tick, delay_sleep;    // WDT tick counter and calculated ticks for SEC_IN_SLEEP
@@ -36,9 +34,9 @@ int main(void)
     for (h = 0; h < 5; ++h)
     {
         LED_ON;
-        _delay_ms(200);
+        _delay_ms(500);
         LED_OFF;
-        _delay_ms(200);
+        _delay_ms(500);
         asm("wdr");
     }
 
@@ -54,7 +52,10 @@ int main(void)
             WDTCR |= _BV(WDTIE); // Enable WDT interrupt
 
             // Configure Timer0, CTC, 10 ms period
-            OCR0A = 195; // Adjust OCR0A value for accuracy
+            // Adjust OCR0A value for accuracy
+            //OCR0A = 192;  // 15:27
+            //OCR0A = 186;  // 14:56
+            OCR0A = 187;    // 15:01
 
             // Set Timer0 to CTC (Clear Timer on Compare Match) mode
             TCCR0A |= _BV(WGM01);           // Enable CTC mode
@@ -108,11 +109,8 @@ int main(void)
 
                 TCCR0B = 0; // Stop Timer0
 
-                // Use adjustable delay for better time tunning
-                _delay_us(FINE_DEL_TIME);
-
                 LED_ON; // Blink the output
-                _delay_ms(20);
+                _delay_ms(10);
                 LED_OFF;
 
                 ///////////////////////////////////////

@@ -20,11 +20,9 @@ This project demonstrates how to implement a power-efficient timer on the ATtiny
 ## Usage
 
 1. Connect an LED to the appropriate pin (PB4 in the example).
-2. Set `FINE_DEL_TIME` to 0.
-3. Flash the compiled firmware to an ATtiny13 microcontroller.
-4. Measure the duration of each 15-minute cycle.
-5. Adjust the `OCR0A` value to achieve slightly less than 15 minutes.
-6. Adjust `FINE_DEL_TIME` to achieve exactly 15 minutes (usually this value is about 25,000 µs).
+2. Flash the compiled firmware to an ATtiny13 microcontroller.
+3. Measure the duration of each 15-minute cycle.
+4. Adjust the `OCR0A` value to achieve slightly less than 15 minutes (lower for shorter time).
 7. Set up your task:
    - Use `h` to select the 15-minute period (for example, `h == 0 || h == 4`).
    - Use `i` to track 10-second periods (for example, `i < 6` means 1 minute).
