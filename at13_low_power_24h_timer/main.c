@@ -3,15 +3,21 @@
 #include <util/delay.h>
 
 // Pin definitions
-#define OUT_PN PB4                    // Output pin (for blinking)
-#define OUT_ON PORTB |= _BV(OUT_PN)   // Macro to turn the output ON
-#define OUT_OFF PORTB &= ~_BV(OUT_PN) // Macro to turn the output OFF
+#define LED_PN PB4                    // Output pin (for blinking)
+#define LED_ON PORTB |= _BV(LED_PN)   // Macro to turn the output ON
+#define LED_OFF PORTB &= ~_BV(LED_PN) // Macro to turn the output OFF
 
-#define FINE_DEL_TIME 26900 // Fine time tunning
+#define DEV_PN PB3
+#define DEV_ON PORTB |= _BV(DEV_PN)
+#define DEV_OFF PORTB &= ~_BV(DEV_PN)
+
+
+#define FINE_DEL_TIME 26800 // Fine time tunning
 
 // Global variables
-volatile uint16_t timer_tick, ticks_in_sleep; // WDT tick counter and calculated ticks for SEC_IN_SLEEP
+volatile uint16_t timer_tick, delay_sleep;    // WDT tick counter and calculated ticks for SEC_IN_SLEEP
 volatile uint8_t wdt_lock_flag;               // Flag to lock WDT operation
+
 uint8_t h, i;                                 // Loop counters
 
 int main(void)
@@ -24,14 +30,14 @@ int main(void)
     asm("wdr");                               // Reset the WDT
 
     // Configure OUT_PN as an output pin
-    DDRB = _BV(OUT_PN);
+    DDRB = _BV(LED_PN);
 
     // Inint blink
     for (h = 0; h < 5; ++h)
     {
-        OUT_ON;
+        LED_ON;
         _delay_ms(200);
-        OUT_OFF;
+        LED_OFF;
         _delay_ms(200);
         asm("wdr");
     }
@@ -56,7 +62,7 @@ int main(void)
             TIMSK0 |= _BV(OCIE0A);          // Enable Timer0 Compare Match A interrupt
             TCNT0 = 0;                      // Reset Timer0 counter
 
-            OUT_ON;
+            LED_ON;
 
             // First, measure accurate the WDT time
             // Reset the WDT tick counter (1 tick per 10 ms)
@@ -71,7 +77,7 @@ int main(void)
             // Calculate to get 10 seconds (1000 ticks * 10 ms)
             delay_sleep = 1000 - timer_tick;
 
-            OUT_OFF;
+            LED_OFF;
 
             // Wait for full 10 sedonds
             timer_tick = 0;
@@ -105,19 +111,21 @@ int main(void)
                 // Use adjustable delay for better time tunning
                 _delay_us(FINE_DEL_TIME);
 
-                OUT_ON; // Blink the output
+                LED_ON; // Blink the output
                 _delay_ms(20);
-                OUT_OFF;
+                LED_OFF;
 
                 ///////////////////////////////////////
                 // one minute time once per 24 h
                 if (h == 0 && i < 6)
                 {
-                    OUT_ON;
+                    LED_ON;
+                    DEV_ON;
                 }
                 else
                 {
-                    OUT_OFF;
+                    LED_OFF;
+                    DEV_OFF;
                 }
                 ///////////////////////////////////////
             }
