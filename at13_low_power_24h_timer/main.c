@@ -105,7 +105,7 @@ int main(void)
 
                 // Blink the LED briefly to indicate activity
                 LED_ON;
-                _delay_ms(10);
+                _delay_ms(11); // use this dealy for fine adjustment
                 LED_OFF;
 
                 ///////////////////////////////////////
